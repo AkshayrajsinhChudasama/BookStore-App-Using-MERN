@@ -2,12 +2,13 @@ import React, { createContext, useContext, useState } from "react";
 
 export const AuthContext = createContext();
 export default function AuthProvider({ children }) {
-  const initialAuthUser = localStorage.getItem("Users");
+  const initialAuthUser = localStorage.getItem("user");
   const [authUser, setAuthUser] = useState(
     initialAuthUser ? JSON.parse(initialAuthUser) : undefined
   );
+  const url = 'http://localhost:4001/';
   return (
-    <AuthContext.Provider value={[authUser, setAuthUser]}>
+    <AuthContext.Provider value={[authUser, setAuthUser,url]}>
       {children}
     </AuthContext.Provider>
   );

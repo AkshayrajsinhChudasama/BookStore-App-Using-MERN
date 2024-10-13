@@ -1,5 +1,7 @@
+import Contact from "../model/contact.model.js";
 import User from "../model/user.model.js";
 import bcryptjs from "bcryptjs";
+
 export const signup = async(req, res) => {
     try {
         const { fullname, email, password } = req.body;
@@ -41,6 +43,7 @@ export const login = async(req, res) => {
                     _id: user._id,
                     fullname: user.fullname,
                     email: user.email,
+                    level:user.level
                 },
             });
         }
@@ -48,4 +51,26 @@ export const login = async(req, res) => {
         console.log("Error: " + error.message);
         res.status(500).json({ message: "Internal server error" });
     }
+};
+
+export const contact = async (req, res) => {
+
+
+  const { name, email, message } = req.body;
+
+  try {
+    // Create a new contact document
+    const newContact = new Contact({
+      name,
+      email,
+      message,
+    });
+
+    // Save to the database
+    await newContact.save();
+    res.status(201).json({ message: "Contact message sent successfully!" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to send message. Please try again." });
+  }
 };

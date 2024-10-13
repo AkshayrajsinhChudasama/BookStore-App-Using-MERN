@@ -1,84 +1,105 @@
 import React, { useEffect, useState } from "react";
-
-import "slick-carousel/slick/slick.css";
-import "slick-carousel/slick/slick-theme.css";
-import Slider from "react-slick";
-
 import axios from "axios";
+import PdfViewer from "./pdfViewer";
 
-import Cards from "./Cards";
+const svgFallback = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200">
+  <rect width="100%" height="100%" fill="lightgray" />
+  <text x="50%" y="50%" text-anchor="middle" fill="darkred" font-size="18" font-family="Arial" dy=".35em">Unable to Load Image</text>
+  <text x="50%" y="60%" text-anchor="middle" fill="gray" font-size="14" font-family="Arial" dy=".35em">or Unsupported Format</text>
+</svg>`;
+
 function Freebook() {
-  const [book, setBook] = useState([]);
-  useEffect(() => {
-    const getBook = async () => {
-      try {
-        const res = await axios.get("http://localhost:4001/book");
+  const [books, setBooks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [currentBooks, setCurrentBooks] = useState([]);
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const booksPerPage = 3;
 
-        const data = res.data.filter((data) => data.category === "Free");
-        console.log(data);
-        setBook(data);
+  useEffect(() => {
+    const getBooks = async () => {
+      setLoading(true);
+      try {
+        const res = await axios.get("http://localhost:4001/book/getbook");
+        setBooks(res.data);
+        setCurrentBooks(res.data.slice(0, booksPerPage));
       } catch (error) {
         console.log(error);
+      } finally {
+        setLoading(false);
       }
     };
-    getBook();
+    getBooks();
   }, []);
 
-  var settings = {
-    dots: true,
-    infinite: false,
-    speed: 500,
-    slidesToShow: 3,
-    slidesToScroll: 3,
-    initialSlide: 0,
-    responsive: [
-      {
-        breakpoint: 1024,
-        settings: {
-          slidesToShow: 3,
-          slidesToScroll: 3,
-          infinite: true,
-          dots: true,
-        },
-      },
-      {
-        breakpoint: 600,
-        settings: {
-          slidesToShow: 2,
-          slidesToScroll: 2,
-          initialSlide: 2,
-        },
-      },
-      {
-        breakpoint: 480,
-        settings: {
-          slidesToShow: 1,
-          slidesToScroll: 1,
-        },
-      },
-    ],
+  const loadMoreBooks = () => {
+    const nextBooks = books.slice(currentBooks.length, currentBooks.length + booksPerPage);
+    setCurrentBooks([...currentBooks, ...nextBooks]);
   };
-  return (
-    <>
-      <div className=" max-w-screen-2xl container mx-auto md:px-20 px-4">
-        <div>
-          <h1 className="font-semibold text-xl pb-2">Free Offered Courses</h1>
-          <p>
-            Lorem ipsum dolor sit amet, consectetur adipisicing elit.
-            Accusantium veritatis alias pariatur ad dolor repudiandae eligendi
-            corporis nulla non suscipit, iure neque earum?
-          </p>
-        </div>
 
-        <div>
-          <Slider {...settings}>
-            {book.map((item) => (
-              <Cards item={item} key={item.id} />
+  const handleCardClick = (filePath) => {
+    setPdfUrl(filePath);
+  };
+
+  const closePreview = () => {
+    setPdfUrl(null);
+  };
+
+  return (
+    <div className="max-w-screen-2xl container mx-auto md:px-20 px-4">
+      <div className="p-4 bg-background rounded shadow mx-auto md:px-20 px-4 mt-16 pt-5">
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[...Array(3)].map((_, index) => (
+              <div key={index} className="animate-pulse bg-gray-700 rounded-md h-64"></div>
             ))}
-          </Slider>
-        </div>
+          </div>
+        ) : currentBooks.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {currentBooks.map((book) => (
+              <div
+                key={book._id}
+                className="bg-gray-800 transition-transform duration-3000 transform hover:scale-105 rounded-md overflow-hidden shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+                onClick={() => handleCardClick(book.path)}
+              >
+                <img
+                  src={book.image}
+                  alt={book.name}
+                  loading="lazy"
+                  className="w-full h-48 object-contain transition-transform"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src =
+                      "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svgFallback);
+                  }}
+                />
+                <div className="p-4">
+                  <h2 className="font-bold text-lg text-white">{book.name}</h2>
+                  <p className="text-gray-300">Language: {book.language}</p>
+                  <p className="text-gray-400">Category: {book.category}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center text-center">
+            <h2 className="text-xl font-bold text-gray-700 mb-2">No Books Uploaded</h2>
+            <p className="text-gray-500">It seems that the admin hasn't uploaded any books yet.</p>
+          </div>
+        )}
+        {currentBooks.length < books.length && (
+          <button
+            onClick={loadMoreBooks}
+            className="bg-blue-500 text-white px-4 py-2 rounded-md mt-4 hover:bg-blue-700 duration-200"
+            disabled={loading}
+          >
+            Load More
+          </button>
+        )}
       </div>
-    </>
+
+      {pdfUrl && <PdfViewer pdfUrl={pdfUrl} onClose={closePreview} />}
+    </div>
   );
 }
+
 export default Freebook;
